@@ -1,11 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"log"
 	"os"
-	"strings"
 )
 
 func main() {
@@ -17,21 +17,25 @@ func main() {
 
 	defer file.Close()
 
-	var data []byte
+	var curr []byte
+	var chars []byte
 
 	for {
-		chars := make([]byte, 8)
+		chars = make([]byte, 8)
+
 		_, err := file.Read(chars)
 		if err == io.EOF {
 			break
 		}
 
-		data = append(data, chars...)
-	}
+		parts := bytes.Split(chars, []byte{'\n'})
 
-	lines := strings.SplitSeq(string(data), "\n")
+		curr = append(curr, parts[0]...)
 
-	for line := range lines {
-		fmt.Printf("read: %s\n", line)
+		// will not handle lines shorter than 8 bytes
+		if len(parts) == 2 {
+			fmt.Printf("read: %s\n", curr)
+			curr = parts[1]
+		}
 	}
 }
