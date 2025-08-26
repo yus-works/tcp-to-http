@@ -21,10 +21,12 @@ func getLinesChannel(f io.ReadCloser) <-chan string {
 		for {
 			buff = make([]byte, 8)
 
-			_, err := f.Read(buff)
+			n, err := f.Read(buff)
 			if err == io.EOF {
 				break
 			}
+
+			buff = buff[:n]
 
 			parts := bytes.Split(buff, []byte{'\n'})
 
