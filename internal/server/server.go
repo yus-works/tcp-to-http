@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"bytes"
@@ -45,7 +45,7 @@ func handleConnection(conn net.Conn) <-chan string {
 	return lines
 }
 
-func main() {
+func Start() {
 	ln, err := net.Listen("tcp", "localhost:42069")
 	if err != nil {
 		log.Println("Error listening: ", err)
@@ -67,5 +67,4 @@ func main() {
 			fmt.Printf("read: %s\n", line)
 		}
 	}
-
 }
