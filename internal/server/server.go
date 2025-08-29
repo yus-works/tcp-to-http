@@ -32,12 +32,9 @@ func handleConnection(conn net.Conn) <-chan string {
 
 				parts := bytes.Split(buff, []byte{'\n'})
 
-				if len(parts) == 1 {
-					curr = append(curr, parts[0]...)
-				}
-				
+				curr = append(curr, parts[0]...)
+
 				if len(parts) > 1 {
-					curr = append(curr, parts[0]...)
 					lines <- string(curr)
 
 					curr = parts[1]
