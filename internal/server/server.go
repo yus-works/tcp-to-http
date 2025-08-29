@@ -13,10 +13,12 @@ func handleConnection(conn net.Conn) <-chan string {
 	lines := make(chan string)
 
 	go func() {
-		defer conn.Close()
-		defer close(lines)
+		defer func() {
+			conn.Close()
+			close(lines)
 
-		defer func() { fmt.Println("channel closed") }()
+			fmt.Println("channel closed")
+		}()
 
 		var curr []byte
 		var buff []byte
@@ -25,19 +27,25 @@ func handleConnection(conn net.Conn) <-chan string {
 			buff = make([]byte, 8)
 
 			n, err := conn.Read(buff)
-			if err == io.EOF {
-				break
+			if n > 0 {
+				buff = buff[:n]
+
+				parts := bytes.Split(buff, []byte{'\n'})
+
+				if len(parts) == 1 {
+					curr = append(curr, parts[0]...)
+				}
+				
+				if len(parts) > 1 {
+					curr = append(curr, parts[0]...)
+					lines <- string(curr)
+
+					curr = parts[1]
+				}
 			}
 
-			buff = buff[:n]
-
-			parts := bytes.Split(buff, []byte{'\n'})
-
-			curr = append(curr, parts[0]...)
-
-			if len(parts) == 2 {
-				lines <- string(curr)
-				curr = parts[1]
+			if err == io.EOF {
+				break
 			}
 		}
 	}()
