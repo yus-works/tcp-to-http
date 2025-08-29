@@ -44,7 +44,12 @@ func handleConnection(conn net.Conn) <-chan string {
 				}
 			}
 
-			if err == io.EOF {
+			// must handle EOF after bytes because Read
+			// might return EOF with the final bytes ???
+			if err != nil {
+				if err != io.EOF {
+					log.Println("Error reading bytes: ", err)
+				}
 				break
 			}
 		}
