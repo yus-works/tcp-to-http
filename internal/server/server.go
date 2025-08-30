@@ -47,6 +47,9 @@ func handleConnection(conn net.Conn) <-chan string {
 				if err != io.EOF {
 					log.Println("Error reading bytes: ", err)
 				}
+
+				// flush whatever is left in curr
+				lines <- string(curr)
 				break
 			}
 		}
