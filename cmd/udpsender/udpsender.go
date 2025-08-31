@@ -1,4 +1,4 @@
-package main
+package udpsender
 
 import (
 	"bufio"
@@ -8,7 +8,7 @@ import (
 	"os"
 )
 
-func main() {
+func UDPdemo() {
 	raddr, err := net.ResolveUDPAddr("udp", "localhost:42069")
 	if err != nil {
 		log.Println("Error resolving address: ", err)
