@@ -30,16 +30,13 @@ var versions = map[string]struct{}{
 	"1.1": {},
 }
 
+// TODO: use better validation for this
 var isValidTarget = regexp.MustCompile("[*/][-_a-zA-Z0-9]*")
 
-func RequestFromReader(reader io.Reader) (*Request, error) {
-	msg, err := io.ReadAll(reader)
-	if err != nil {
-		log.Println("Failed to read http message: ", err)
-		return nil, err
-	}
+func parseRequestLine(line string) (*RequestLine, error) {
+	var reqLine RequestLine
+	var err error
 
-	line := strings.Split(string(msg), "\r\n")[0]
 	parts := strings.Split(line, " ")
 
 	if len(parts) != 3 {
@@ -47,8 +44,6 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		log.Println("Invalid number of request line parts: ", err)
 		return nil, err
 	}
-
-	reqLine := RequestLine{}
 
 	method := parts[0]
 	if _, ok := methods[method]; !ok {
@@ -83,8 +78,26 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 	}
 
 	reqLine.HttpVersion = versionParts[1]
-	
+
+	return &reqLine, nil
+}
+
+func RequestFromReader(reader io.Reader) (*Request, error) {
+	msg, err := io.ReadAll(reader)
+	if err != nil {
+		log.Println("Failed to read http message: ", err)
+		return nil, err
+	}
+
+	line := strings.Split(string(msg), "\r\n")[0]
+
+	reqLine, err := parseRequestLine(line)
+	if err != nil {
+		log.Println("Failed to parse request line: ", err)
+		return nil, err
+	}
+
 	return &Request{
-		RequestLine: reqLine,
+		RequestLine: *reqLine,
 	}, nil
 }
