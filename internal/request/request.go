@@ -35,30 +35,23 @@ var isValidTarget = regexp.MustCompile("[*/][-_a-zA-Z0-9]*")
 
 func parseRequestLine(line []byte) (*RequestLine, error) {
 	var reqLine RequestLine
-	var err error
 
 	parts := bytes.Split(line, []byte{' '})
 
 	if len(parts) != 3 {
-		err = fmt.Errorf("Request line must contain exactly 3 parts")
-		log.Println("Invalid number of request line parts: ", err)
-		return nil, err
+		return nil, fmt.Errorf("Invalid number of request line parts")
 	}
 
 	method := string(parts[0])
 	if _, ok := methods[method]; !ok {
-		err = fmt.Errorf("Request METHOD not found in allowed set")
-		log.Println("Invalid METHOD: ", err)
-		return nil, err
+		return nil, fmt.Errorf("Request METHOD not found in allowed set")
 	}
 
 	reqLine.Method = method
 
 	target := parts[1]
 	if !isValidTarget.Match(target) {
-		err = fmt.Errorf("Request TARGET must follow [/].* (for now)")
-		log.Println("Invalid TARGET: ", err)
-		return nil, err
+		return nil, fmt.Errorf("Request TARGET must follow [/].* (for now)")
 	}
 
 	reqLine.RequestTarget = string(target)
@@ -66,16 +59,12 @@ func parseRequestLine(line []byte) (*RequestLine, error) {
 	versionToken := parts[2]
 	versionParts := bytes.Split(versionToken, []byte{'/'})
 	if string(versionParts[0]) != "HTTP" {
-		err = fmt.Errorf("Request type must be exactly 'HTTP'")
-		log.Println("Invalid TYPE: ", err)
-		return nil, err
+		return nil, fmt.Errorf("Request type must be exactly 'HTTP'")
 	}
 
 	versionNum := string(versionParts[1])
 	if _, ok := versions[versionNum]; !ok {
-		err = fmt.Errorf("Request version must be exactly '1.1' (for now)")
-		log.Println("Invalid VERSION: ", err)
-		return nil, err
+		return nil, fmt.Errorf("Request version must be exactly '1.1' (for now)")
 	}
 
 	reqLine.HttpVersion = versionNum
