@@ -1,15 +1,14 @@
 package request
 
 import (
-	"bytes"
 	"fmt"
 	"io"
-	"log"
 	"regexp"
 )
 
 type Request struct {
 	RequestLine RequestLine
+	state       parserState
 }
 
 type RequestLine struct {
@@ -18,76 +17,101 @@ type RequestLine struct {
 	Method        string
 }
 
-var methods = map[string]struct{}{
-	"GET": {},
-	"PUT": {},
-	"POST": {},
-	"DELETE": {},
-	"OPTIONS": {},
-}
+type parserState string
 
-var versions = map[string]struct{}{
-	"1.1": {},
-}
+const (
+	StateInit parserState = "init"
+	StateDone parserState = "done"
+)
 
 // TODO: use better validation for this
 var isValidTarget = regexp.MustCompile("[*/][-_a-zA-Z0-9]*")
 
-func parseRequestLine(line []byte) (*RequestLine, error) {
-	var reqLine RequestLine
+func (r *Request) parse(data []byte) (int, error) {
+	for {
+		switch r.state {
+		case StateInit:
+			rl, n, err := parseRequestLine(data)
+			if err != nil {
+				return 0, err
+			}
 
-	parts := bytes.Split(line, []byte{' '})
+			if n > 0 {
+				r.RequestLine = *rl
+				r.state = StateDone
+			}
+		
+			// TODO: this will probably change when doing headers
+			return n, nil
 
-	if len(parts) != 3 {
-		return nil, fmt.Errorf("Invalid number of request line parts")
+		case StateDone:
+			return 0, nil
+		}
 	}
+}
 
-	method := string(parts[0])
-	if _, ok := methods[method]; !ok {
-		return nil, fmt.Errorf("Request METHOD not found in allowed set")
+func (r *Request) done() bool {
+	return r.state == StateDone
+}
+
+func newRequest() *Request {
+	return &Request{
+		state: StateInit,
 	}
-
-	reqLine.Method = method
-
-	target := parts[1]
-	if !isValidTarget.Match(target) {
-		return nil, fmt.Errorf("Request TARGET must follow [/].* (for now)")
-	}
-
-	reqLine.RequestTarget = string(target)
-
-	versionToken := parts[2]
-	versionParts := bytes.Split(versionToken, []byte{'/'})
-	if string(versionParts[0]) != "HTTP" {
-		return nil, fmt.Errorf("Request type must be exactly 'HTTP'")
-	}
-
-	versionNum := string(versionParts[1])
-	if _, ok := versions[versionNum]; !ok {
-		return nil, fmt.Errorf("Request version must be exactly '1.1' (for now)")
-	}
-
-	reqLine.HttpVersion = versionNum
-
-	return &reqLine, nil
 }
 
 func RequestFromReader(reader io.Reader) (*Request, error) {
-	msg, err := io.ReadAll(reader)
-	if err != nil {
-		log.Println("Failed to read http message: ", err)
-		return nil, err
+	request := newRequest()
+
+	// TODO: add buffer resizing
+	buf := make([]byte, 1024)
+
+	// this indexes the last byte in the buf that stores data
+	dataEnd := 0
+	for !request.done() {
+
+		// this just keeps reading into the buffer
+		readN, readErr := reader.Read(buf[dataEnd:])
+
+		dataEnd += readN
+
+		parsedN, parseErr := request.parse(buf[:dataEnd])
+		if parseErr != nil {
+			return nil, parseErr
+		}
+
+		// when it returns non zero, it means it parsed a valid line
+		// so we can just clear out the data that it parsed because we dont
+		// need it anymore
+		if parsedN > 0 {
+			// since the parsed line might end before the end of
+			// the latest read chunk, we copy anything that is left
+			// after the length the parser says it consumed and copy it
+			// to the start because that might be the start of another line
+
+			copy(buf, buf[parsedN:dataEnd])
+			dataEnd -= parsedN
+		}
+
+		if readErr != nil {
+			if readErr == io.EOF {
+				if parsedN == 0 && dataEnd > 0 {
+					// have unparsed data at EOF
+					return nil, fmt.Errorf("incomplete data at EOF")
+				}
+				if request.done() {
+					break
+				}
+
+				// if not done but hit EOF
+				return nil, io.ErrUnexpectedEOF
+			}
+			return nil, readErr
+		}
+
+		// keep reading and trying to parse until parse() returns non zero or
+		// read errors
 	}
 
-	line := bytes.Split(msg, []byte{'\r', '\n'})[0]
-
-	reqLine, err := parseRequestLine(line)
-	if err != nil {
-		log.Println("Failed to parse request line: ", err)
-		return nil, err
-	}
-
-	return &Request{
-		RequestLine: *reqLine,
-	}, nil
+	return request, nil
 }
