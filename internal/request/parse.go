@@ -3,6 +3,7 @@ package request
 import (
 	"bytes"
 	"fmt"
+	"regexp"
 )
 
 var methods = map[string]struct{}{
@@ -16,6 +17,9 @@ var methods = map[string]struct{}{
 var versions = map[string]struct{}{
 	"1.1": {},
 }
+
+// TODO: use better validation for this
+var isValidTarget = regexp.MustCompile("[*/][-_a-zA-Z0-9]*")
 
 var CRLF = []byte("\r\n")
 var SP = []byte{' '}

@@ -3,7 +3,6 @@ package request
 import (
 	"fmt"
 	"io"
-	"regexp"
 )
 
 type Request struct {
@@ -23,9 +22,6 @@ const (
 	StateInit parserState = "init"
 	StateDone parserState = "done"
 )
-
-// TODO: use better validation for this
-var isValidTarget = regexp.MustCompile("[*/][-_a-zA-Z0-9]*")
 
 func (r *Request) parse(data []byte) (int, error) {
 	for {
