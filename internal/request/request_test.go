@@ -35,7 +35,7 @@ func TestRequestLineParse(t *testing.T) {
 				"Host: localhost:42069\r\n" +
 				"User-Agent: curl/7.81.0\r\n" +
 				"Accept: */*\r\n" +
-				"\r\n", numBytesPerRead: 3,
+				"\r\n", numBytesPerRead: 1,
 		},
 	)
 	require.NoError(t, err)
@@ -51,7 +51,7 @@ func TestRequestLineParse(t *testing.T) {
 				"Host: localhost:42069\r\n" +
 				"User-Agent: curl/7.81.0\r\n" +
 				"Accept: */*\r\n" +
-				"\r\n", numBytesPerRead: 3,
+				"\r\n", numBytesPerRead: 2,
 		},
 	)
 	require.NoError(t, err)
@@ -78,7 +78,7 @@ func TestRequestLineParse(t *testing.T) {
 			data: "POST /api/users HTTP/1.1\r\n" +
 				"Host: localhost:42069\r\n" +
 				"Content-Type: application/json\r\n" +
-				"\r\n", numBytesPerRead: 3,
+				"\r\n", numBytesPerRead: 4,
 		},
 	)
 	require.NoError(t, err)
@@ -87,28 +87,13 @@ func TestRequestLineParse(t *testing.T) {
 	assert.Equal(t, "/api/users", r.RequestLine.RequestTarget)
 	assert.Equal(t, "1.1", r.RequestLine.HttpVersion)
 
-	// TODO: disabled test: PUT method with query parameters
-	// _, err = RequestFromReader(
-	// 	&chunkReader{
-	// 		data:"PUT /users/123?active=true HTTP/1.1\r\n" +
-	// 		"Host: localhost:42069\r\n" +
-	// 		"Content-Type: application/json\r\n" +
-	// 		"\r\n",	numBytesPerRead: 3,
-	// 	},
-	// )
-	// require.NoError(t, err)
-	// require.NotNil(t, r)
-	// assert.Equal(t, "PUT", r.RequestLine.Method)
-	// assert.Equal(t, "/users/123?active=true", r.RequestLine.RequestTarget)
-	// assert.Equal(t, "1.1", r.RequestLine.HttpVersion)
-
 	// Test: DELETE method
 	r, err = RequestFromReader(
 		&chunkReader{
 			data: "DELETE /users/123 HTTP/1.1\r\n" +
 				"Host: localhost:42069\r\n" +
 				"Authorization: Bearer token123\r\n" +
-				"\r\n", numBytesPerRead: 3,
+				"\r\n", numBytesPerRead: 1,
 		},
 	)
 	require.NoError(t, err)
@@ -117,12 +102,12 @@ func TestRequestLineParse(t *testing.T) {
 	assert.Equal(t, "/users/123", r.RequestLine.RequestTarget)
 	assert.Equal(t, "1.1", r.RequestLine.HttpVersion)
 
-	// Test: HTTP/1.0 version // TODO: only allowing 1.1 for now
+	// Test: Missing method
 	_, err = RequestFromReader(
 		&chunkReader{
 			data: "\r\n" +
 				"Host: localhost:42069\r\n" +
-				"\r\n", numBytesPerRead: 3,
+				"\r\n", numBytesPerRead: 2,
 		},
 	)
 	require.Error(t, err)
@@ -146,7 +131,7 @@ func TestRequestLineParse(t *testing.T) {
 		&chunkReader{
 			data: "OPTIONS * HTTP/1.1\r\n" +
 				"Host: localhost:42069\r\n" +
-				"\r\n", numBytesPerRead: 3,
+				"\r\n", numBytesPerRead: 4,
 		},
 	)
 	require.NoError(t, err)
@@ -161,7 +146,7 @@ func TestRequestLineParse(t *testing.T) {
 			data: "\r\n" +
 				"Host: localhost:42069\r\n" +
 				"\r\n",
-			numBytesPerRead: 3,
+			numBytesPerRead: 1,
 		},
 	)
 	require.Error(t, err)
@@ -171,7 +156,7 @@ func TestRequestLineParse(t *testing.T) {
 		&chunkReader{
 			data: "GET /path HTTP/1.1 extra\r\n" +
 				"Host: localhost:42069\r\n" + "\r\n",
-			numBytesPerRead: 3,
+			numBytesPerRead: 2,
 		},
 	)
 	require.Error(t, err)
@@ -193,7 +178,7 @@ func TestRequestLineParse(t *testing.T) {
 			data: "GET /path HTTP/2.0\r\n" +
 				"Host: localhost:42069\r\n" +
 				"\r\n",
-			numBytesPerRead: 3,
+			numBytesPerRead: 4,
 		},
 	)
 	require.Error(t, err)
@@ -204,7 +189,7 @@ func TestRequestLineParse(t *testing.T) {
 			data: "GET /path HTTPS/1.1\r\n" +
 				"Host: localhost:42069\r\n" +
 				"\r\n",
-			numBytesPerRead: 3,
+			numBytesPerRead: 1,
 		},
 	)
 	require.Error(t, err)
@@ -215,36 +200,10 @@ func TestRequestLineParse(t *testing.T) {
 			data: "get /path HTTP/1.1\r\n" +
 				"Host: localhost:42069\r\n" +
 				"\r\n",
-			numBytesPerRead: 3,
+			numBytesPerRead: 2,
 		},
 	)
 	require.Error(t, err)
-
-	// TODO: disabled test: only allowing 1.1 for now
-	// r, err = RequestFromReader(
-	// 	&chunkReader{
-	// 		data:"GET /legacy HTTP/1.0\r\n" +
-	// 		"Host: localhost:42069\r\n" +
-	// 		"\r\n",	numBytesPerRead: 3,
-	// 	},
-	// )
-	// require.NoError(t, err)
-	// require.NotNil(t, r)
-	// assert.Equal(t, "GET", r.RequestLine.Method)
-	// assert.Equal(t, "/legacy", r.RequestLine.RequestTarget)
-	// assert.Equal(t, "1.0", r.RequestLine.HttpVersion)
-
-	// TODO: disabled test: not allowing method versioning yet
-	// r, err = RequestFromReader(
-	// 	&chunkReader{
-	// 		data:"PATCH-V1.2 /path HTTP/1.1\r\n" +
-	// 		"Host: localhost:42069\r\n" +
-	// 		"\r\n",	numBytesPerRead: 3,
-	// 	}
-	// )
-	// require.NoError(t, err)
-	// require.NotNil(t, r)
-	// assert.Equal(t, "PATCH-V1.2", r.RequestLine.Method)
 
 	// Test: Request line without CRLF (only LF)
 	_, err = RequestFromReader(
@@ -261,7 +220,7 @@ func TestRequestLineParse(t *testing.T) {
 		&chunkReader{
 			data: "GET /path%20with%20spaces HTTP/1.1\r\n" +
 				"Host: localhost:42069\r\n" +
-				"\r\n", numBytesPerRead: 3,
+				"\r\n", numBytesPerRead: 4,
 		},
 	)
 	require.NoError(t, err)
@@ -270,26 +229,12 @@ func TestRequestLineParse(t *testing.T) {
 	assert.Equal(t, "/path%20with%20spaces", r.RequestLine.RequestTarget)
 	assert.Equal(t, "1.1", r.RequestLine.HttpVersion)
 
-	// TODO: Disabled test: Long request target
-	// r, err = RequestFromReader(
-	// 	&chunkReader{
-	// 		data:"GET /very/long/path/with/many/segments/and/query?param1=value1&param2=value2&param3=value3 HTTP/1.1\r\n" +
-	// 		"Host: localhost:42069\r\n" +
-	// 		"\r\n",	numBytesPerRead: 3,
-	// 	},
-	// )
-	// require.NoError(t, err)
-	// require.NotNil(t, r)
-	// assert.Equal(t, "GET", r.RequestLine.Method)
-	// assert.Equal(t, "/very/long/path/with/many/segments/and/query?param1=value1&param2=value2&param3=value3", r.RequestLine.RequestTarget)
-	// assert.Equal(t, "1.1", r.RequestLine.HttpVersion)
-
 	// Test: Empty method
 	_, err = RequestFromReader(
 		&chunkReader{
 			data: " /path HTTP/1.1\r\n" +
 				"Host: localhost:42069\r\n" +
-				"\r\n", numBytesPerRead: 3,
+				"\r\n", numBytesPerRead: 1,
 		},
 	)
 	require.Error(t, err)
@@ -299,7 +244,7 @@ func TestRequestLineParse(t *testing.T) {
 		&chunkReader{
 			data: "GET  HTTP/1.1\r\n" +
 				"Host: localhost:42069\r\n" +
-				"\r\n", numBytesPerRead: 3,
+				"\r\n", numBytesPerRead: 2,
 		},
 	)
 	require.Error(t, err)
@@ -313,4 +258,61 @@ func TestRequestLineParse(t *testing.T) {
 		},
 	)
 	require.Error(t, err)
+
+	// TODO: enable these tests
+
+	// Test: Long request target
+	// r, err = RequestFromReader(
+	// 	&chunkReader{
+	// 		data:"GET /very/long/path/with/many/segments/and/query?param1=value1&param2=value2&param3=value3 HTTP/1.1\r\n" +
+	// 		"Host: localhost:42069\r\n" +
+	// 		"\r\n",	numBytesPerRead: 4,
+	// 	},
+	// )
+	// require.NoError(t, err)
+	// require.NotNil(t, r)
+	// assert.Equal(t, "GET", r.RequestLine.Method)
+	// assert.Equal(t, "/very/long/path/with/many/segments/and/query?param1=value1&param2=value2&param3=value3", r.RequestLine.RequestTarget)
+	// assert.Equal(t, "1.1", r.RequestLine.HttpVersion)
+
+	// Test: legacy version 
+	// r, err = RequestFromReader(
+	// 	&chunkReader{
+	// 		data:"GET /legacy HTTP/1.0\r\n" +
+	// 		"Host: localhost:42069\r\n" +
+	// 		"\r\n",	numBytesPerRead: 1,
+	// 	},
+	// )
+	// require.NoError(t, err)
+	// require.NotNil(t, r)
+	// assert.Equal(t, "GET", r.RequestLine.Method)
+	// assert.Equal(t, "/legacy", r.RequestLine.RequestTarget)
+	// assert.Equal(t, "1.0", r.RequestLine.HttpVersion)
+
+	// Test: versioned method
+	// r, err = RequestFromReader(
+	// 	&chunkReader{
+	// 		data:"PATCH-V1.2 /path HTTP/1.1\r\n" +
+	// 		"Host: localhost:42069\r\n" +
+	// 		"\r\n",	numBytesPerRead: 2,
+	// 	}
+	// )
+	// require.NoError(t, err)
+	// require.NotNil(t, r)
+	// assert.Equal(t, "PATCH-V1.2", r.RequestLine.Method)
+
+	// Test: PUT method with query parameters
+	// _, err = RequestFromReader(
+	// 	&chunkReader{
+	// 		data:"PUT /users/123?active=true HTTP/1.1\r\n" +
+	// 		"Host: localhost:42069\r\n" +
+	// 		"Content-Type: application/json\r\n" +
+	// 		"\r\n",	numBytesPerRead: 3,
+	// 	},
+	// )
+	// require.NoError(t, err)
+	// require.NotNil(t, r)
+	// assert.Equal(t, "PUT", r.RequestLine.Method)
+	// assert.Equal(t, "/users/123?active=true", r.RequestLine.RequestTarget)
+	// assert.Equal(t, "1.1", r.RequestLine.HttpVersion)
 }
