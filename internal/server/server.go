@@ -1,62 +1,13 @@
 package server
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"os"
+
+	"github.com/yus-works/tcp-to-http/internal/request"
 )
-
-func handleConnection(conn net.Conn) <-chan string {
-	lines := make(chan string)
-
-	go func() {
-		defer func() {
-			conn.Close()
-			close(lines)
-
-			fmt.Println("channel closed")
-		}()
-
-		var curr []byte
-		var buff []byte
-
-		for {
-			buff = make([]byte, 8)
-
-			n, err := conn.Read(buff)
-			if n > 0 {
-				buff = buff[:n]
-
-				parts := bytes.Split(buff, []byte{'\n'})
-
-				curr = append(curr, parts[0]...)
-
-				if len(parts) > 1 {
-					lines <- string(curr)
-
-					curr = parts[1]
-				}
-			}
-
-			// must handle EOF after bytes because Read
-			// might return EOF with the final bytes ???
-			if err != nil {
-				if err != io.EOF {
-					log.Println("Error reading bytes: ", err)
-				}
-
-				// flush whatever is left in curr
-				lines <- string(curr)
-				break
-			}
-		}
-	}()
-
-	return lines
-}
 
 func Start() {
 	ln, err := net.Listen("tcp", "localhost:42069")
@@ -76,8 +27,14 @@ func Start() {
 
 		fmt.Println("Connection has been accepted")
 
-		for line := range handleConnection(conn) {
-			fmt.Printf("read: %s\n", line)
+		rq, err := request.RequestFromReader(conn)
+		if err != nil {
+			log.Println("Failed to read from conn: ", err)
 		}
+
+		fmt.Printf("Request line:\n")
+		fmt.Printf("- Method: %s\n", rq.RequestLine.Method)
+		fmt.Printf("- Target: %s\n", rq.RequestLine.RequestTarget)
+		fmt.Printf("- Version: %s\n", rq.RequestLine.HttpVersion)
 	}
 }
