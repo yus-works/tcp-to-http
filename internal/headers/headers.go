@@ -10,6 +10,28 @@ type Headers map[string]string
 var CRLF = []byte("\r\n")
 var SP = byte(' ')
 
+func parseHeader(fieldLine []byte) (string, string, error) {
+	colonIdx := bytes.Index(fieldLine, []byte(":"))
+
+	if colonIdx > 0 {
+		if fieldLine[colonIdx-1] == SP {
+			return "", "", fmt.Errorf(
+				"Invalid format: key and ':' should not have a space between",
+			)
+		}
+	} else {
+		return "", "", fmt.Errorf("Missing ':' in header line")
+	}
+
+	kv := bytes.TrimSpace(fieldLine)
+
+	parts := bytes.SplitN(kv, []byte(":"), 2)
+	key := string(parts[0])
+	val := string(bytes.TrimSpace(parts[1]))
+
+	return key, val, nil
+}
+
 func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 	idx := bytes.Index(data, CRLF)
 	if idx == -1 {
@@ -24,25 +46,12 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 	line := data[:idx]
 	read := idx + len(CRLF)
 
-	colonIdx := bytes.Index(line, []byte(":"))
-
-	if colonIdx > 0 {
-		if line[colonIdx - 1] == SP {
-			return 0, false, fmt.Errorf(
-				"Invalid format: key and ':' should not have a space between",
-			)
-		}
-	} else {
-		return 0, false, fmt.Errorf("Missing ':' in header line")
+	k, v, err := parseHeader(line)
+	if err != nil {
+		return 0, false, err
 	}
 
-	kv := bytes.TrimSpace(line)
-
-	parts := bytes.SplitN(kv, []byte(":"), 2)
-	key := string(parts[0])
-	val := string(bytes.TrimSpace(parts[1]))
-
-	h[key] = val
+	h[k] = v
 
 	return read, false, nil
 }
