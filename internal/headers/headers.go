@@ -32,28 +32,39 @@ func parseHeader(fieldLine []byte) (string, string, error) {
 	return key, val, nil
 }
 
-func (h Headers) Parse(data []byte) (n int, done bool, err error) {
-	idx := bytes.Index(data, CRLF)
-	if idx == -1 {
-		return 0, false, nil
+func (h Headers) Parse(data []byte) (int, bool, error) {
+	read := 0
+	done := false
+
+	line := data
+
+	for {
+		line = data[read:]
+
+		idx := bytes.Index(line, CRLF)
+		if idx == -1 {
+			break
+		}
+
+		// if data is just crlf, all headers have been parsed
+		if len(line) == len(CRLF) {
+			done = true
+			break
+		}
+
+		line = line[:idx]
+
+		k, v, err := parseHeader(line)
+		if err != nil {
+			return 0, done, err
+		}
+
+		read += idx + len(CRLF)
+
+		h[k] = v
 	}
 
-	// if data is just crlf, all headers have been parsed
-	if len(data) == len(CRLF) {
-		return len(CRLF), true, nil
-	}
-
-	line := data[:idx]
-	read := idx + len(CRLF)
-
-	k, v, err := parseHeader(line)
-	if err != nil {
-		return 0, false, err
-	}
-
-	h[k] = v
-
-	return read, false, nil
+	return read, done, nil
 }
 
 func NewHeaders() Headers {
