@@ -3,11 +3,14 @@ package request
 import (
 	"fmt"
 	"io"
+
+	"github.com/yus-works/tcp-to-http/internal/headers"
 )
 
 type Request struct {
 	RequestLine RequestLine
 	state       parserState
+	Headers headers.Headers
 }
 
 type RequestLine struct {

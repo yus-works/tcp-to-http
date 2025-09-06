@@ -1,7 +1,9 @@
 package request
 
 import (
+	"fmt"
 	"io"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -315,4 +317,106 @@ func TestRequestLineParse(t *testing.T) {
 	// assert.Equal(t, "PUT", r.RequestLine.Method)
 	// assert.Equal(t, "/users/123?active=true", r.RequestLine.RequestTarget)
 	// assert.Equal(t, "1.1", r.RequestLine.HttpVersion)
+}
+
+func TestRequestParseHeaders(t *testing.T) {
+	// Test: Standard Headers
+	reader := &chunkReader{
+		data:            "GET / HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n",
+		numBytesPerRead: 3,
+	}
+	r, err := RequestFromReader(reader)
+	require.NoError(t, err)
+	require.NotNil(t, r)
+	assert.Equal(t, "localhost:42069", r.Headers["host"])
+	assert.Equal(t, "curl/7.81.0", r.Headers["user-agent"])
+	assert.Equal(t, "*/*", r.Headers["accept"])
+
+	// Test: Empty Headers
+	reader = &chunkReader{
+		data:            "GET / HTTP/1.1\r\n\r\n",
+		numBytesPerRead: 3,
+	}
+	r, err = RequestFromReader(reader)
+	require.NoError(t, err)
+	require.NotNil(t, r)
+	assert.Equal(t, 0, len(r.Headers))
+
+	// Test: Malformed Header
+	reader = &chunkReader{
+		data:            "GET / HTTP/1.1\r\nHost localhost:42069\r\n\r\n",
+		numBytesPerRead: 3,
+	}
+	r, err = RequestFromReader(reader)
+	require.Error(t, err)
+
+	// Test: Duplicate Headers
+	reader = &chunkReader{
+		data:            "GET / HTTP/1.1\r\nSet-Cookie: session=abc\r\nSet-Cookie: user=123\r\nSet-Cookie: theme=dark\r\n\r\n",
+		numBytesPerRead: 5,
+	}
+	r, err = RequestFromReader(reader)
+	require.NoError(t, err)
+	require.NotNil(t, r)
+	assert.Equal(t, "session=abc, user=123, theme=dark", r.Headers["set-cookie"])
+
+	// Test: Case Insensitive Headers
+	reader = &chunkReader{
+		data:            "GET / HTTP/1.1\r\nHOST: example.com\r\nContent-Type: text/html\r\ncontent-length: 42\r\n\r\n",
+		numBytesPerRead: 4,
+	}
+	r, err = RequestFromReader(reader)
+	require.NoError(t, err)
+	require.NotNil(t, r)
+	assert.Equal(t, "example.com", r.Headers["host"])
+	assert.Equal(t, "text/html", r.Headers["content-type"])
+	assert.Equal(t, "42", r.Headers["content-length"])
+
+	// Test: Missing End of Headers
+	reader = &chunkReader{
+		data:            "GET / HTTP/1.1\r\nHost: localhost\r\nUser-Agent: test",
+		numBytesPerRead: 3,
+	}
+	r, err = RequestFromReader(reader)
+	require.Error(t, err)
+
+	// Test: Headers with whitespace
+	reader = &chunkReader{
+		data:            "GET / HTTP/1.1\r\nHost:    spaced.com    \r\nAccept:  text/html  \r\n\r\n",
+		numBytesPerRead: 4,
+	}
+	r, err = RequestFromReader(reader)
+	require.NoError(t, err)
+	require.NotNil(t, r)
+	assert.Equal(t, "spaced.com", r.Headers["host"])
+	assert.Equal(t, "text/html", r.Headers["accept"])
+
+	// Test: Single character chunks with headers
+	reader = &chunkReader{
+		data:            "GET / HTTP/1.1\r\nX-Custom: value\r\n\r\n",
+		numBytesPerRead: 1,
+	}
+	r, err = RequestFromReader(reader)
+	require.NoError(t, err)
+	require.NotNil(t, r)
+	assert.Equal(t, "value", r.Headers["x-custom"])
+
+	// Test: Large header value
+	largeValue := strings.Repeat("a", 1000)
+	reader = &chunkReader{
+		data:            fmt.Sprintf("GET / HTTP/1.1\r\nX-Large: %s\r\n\r\n", largeValue),
+		numBytesPerRead: 10,
+	}
+	r, err = RequestFromReader(reader)
+	require.NoError(t, err)
+	require.NotNil(t, r)
+	assert.Equal(t, largeValue, r.Headers["x-large"])
+
+	// Test: Invalid header characters
+	reader = &chunkReader{
+		data:            "GET / HTTP/1.1\r\nInvalid-©: value\r\n\r\n",
+		numBytesPerRead: 3,
+	}
+	r, err = RequestFromReader(reader)
+	require.Error(t, err)
 }
