@@ -40,6 +40,14 @@ func parseHeader(fieldLine []byte) (string, string, error) {
 	return key, val, nil
 }
 
+func (h Headers) Get(k string) string {
+	return h[strings.ToLower(k)]
+}
+
+func (h Headers) Set(k, v string) {
+	h[strings.ToLower(k)] = v
+}
+
 func (h Headers) Parse(data []byte) (int, bool, error) {
 	read := 0
 	done := false
@@ -80,6 +88,6 @@ func (h Headers) Parse(data []byte) (int, bool, error) {
 	return read, done, nil
 }
 
-func NewHeaders() Headers {
-	return Headers{}
+func NewHeaders() *Headers {
+	return &Headers{}
 }

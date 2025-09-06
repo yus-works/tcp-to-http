@@ -14,7 +14,7 @@ func TestHeadersParse(t *testing.T) {
 	n, done, err := headers.Parse(data)
 	require.NoError(t, err)
 	require.NotNil(t, headers)
-	assert.Equal(t, "localhost:42069", headers["host"])
+	assert.Equal(t, "localhost:42069", headers.Get("host"))
 	assert.Equal(t, 23, n)
 	assert.True(t, done)
 
@@ -40,20 +40,20 @@ func TestHeadersParse(t *testing.T) {
 	n, done, err = headers.Parse(data)
 	require.NoError(t, err)
 	require.NotNil(t, headers)
-	assert.Equal(t, "localhost:42069", headers["host"])
+	assert.Equal(t, "localhost:42069", headers.Get("host"))
 	assert.Equal(t, 32, n)
 	assert.True(t, done)
 
 	// Test: Valid 2 headers with existing headers
 	headers = NewHeaders()
-	headers["existing"] = "value"
+	headers.Set("existing", "value")
 	data = []byte("Host: localhost:42069\r\nContent-Type: application/json\r\n\r\n")
 	n, done, err = headers.Parse(data)
 	require.NoError(t, err)
 	require.NotNil(t, headers)
-	assert.Equal(t, "localhost:42069", headers["host"])
-	assert.Equal(t, "application/json", headers["content-type"])
-	assert.Equal(t, "value", headers["existing"])
+	assert.Equal(t, "localhost:42069", headers.Get("host"))
+	assert.Equal(t, "application/json", headers.Get("content-type"))
+	assert.Equal(t, "value", headers.Get("existing"))
 	assert.Equal(t, 55, n)
 	assert.True(t, done)
 
@@ -71,7 +71,7 @@ func TestHeadersParse(t *testing.T) {
 	n, done, err = headers.Parse(data)
 	require.NoError(t, err)
 	require.NotNil(t, headers)
-	assert.Equal(t, "localhost:42069", headers["host"])
+	assert.Equal(t, "localhost:42069", headers.Get("host"))
 	assert.Equal(t, 23, n)
 	assert.True(t, done)
 
@@ -89,18 +89,18 @@ func TestHeadersParse(t *testing.T) {
 	n, done, err = headers.Parse(data)
 	require.NoError(t, err)
 	require.NotNil(t, headers)
-	assert.Equal(t, "lane-loves-go, prime-loves-zig, tj-loves-ocaml", headers["set-person"])
+	assert.Equal(t, "lane-loves-go, prime-loves-zig, tj-loves-ocaml", headers.Get("set-person"))
 	assert.Equal(t, len(data) - 2, n)
 	assert.True(t, done)
 
 	// Test: Multiple values with existing header
 	headers = NewHeaders()
-	headers["set-person"] = "existing-value"
+	headers.Set("set-person", "existing-value")
 	data = []byte("Set-Person: lane-loves-go\r\nSet-Person: prime-loves-zig\r\n\r\n")
 	n, done, err = headers.Parse(data)
 	require.NoError(t, err)
 	require.NotNil(t, headers)
-	assert.Equal(t, "existing-value, lane-loves-go, prime-loves-zig", headers["set-person"])
+	assert.Equal(t, "existing-value, lane-loves-go, prime-loves-zig", headers.Get("set-person"))
 	assert.Equal(t, len(data) - 2, n)
 	assert.True(t, done)
 
@@ -110,9 +110,9 @@ func TestHeadersParse(t *testing.T) {
 	n, done, err = headers.Parse(data)
 	require.NoError(t, err)
 	require.NotNil(t, headers)
-	assert.Equal(t, "localhost", headers["host"])
-	assert.Equal(t, "json", headers["content-type"])
-	assert.Equal(t, "lane, prime", headers["set-person"])
+	assert.Equal(t, "localhost", headers.Get("host"))
+	assert.Equal(t, "json", headers.Get("content-type"))
+	assert.Equal(t, "lane, prime", headers.Get("set-person"))
 	assert.Equal(t, len(data) - 2, n)
 	assert.True(t, done)
 
@@ -122,7 +122,7 @@ func TestHeadersParse(t *testing.T) {
 	n, done, err = headers.Parse(data)
 	require.NoError(t, err)
 	require.NotNil(t, headers)
-	assert.Equal(t, "lane-loves-go", headers["set-person"])
+	assert.Equal(t, "lane-loves-go", headers.Get("set-person"))
 	assert.Equal(t, len(data) - 2, n)
 	assert.True(t, done)
 }
