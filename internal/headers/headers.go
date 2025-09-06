@@ -33,7 +33,7 @@ func parseHeader(fieldLine []byte) (string, string, error) {
 		return "", "", fmt.Errorf("Invalid key format")
 	}
 	
-	key := string(parts[0])
+	key := string(bytes.ToLower(parts[0]))
 	val := string(bytes.TrimSpace(parts[1]))
 
 	return key, val, nil
