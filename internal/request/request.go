@@ -1,7 +1,6 @@
 package request
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/yus-works/tcp-to-http/internal/headers"
@@ -10,7 +9,7 @@ import (
 type Request struct {
 	RequestLine RequestLine
 	state       parserState
-	Headers headers.Headers
+	Headers     *headers.Headers
 }
 
 type RequestLine struct {
@@ -22,29 +21,54 @@ type RequestLine struct {
 type parserState string
 
 const (
-	StateInit parserState = "init"
-	StateDone parserState = "done"
+	StateInit    parserState = "init"
+	StateDone    parserState = "done"
+	StateHeaders parserState = "headers"
 )
 
 func (r *Request) parse(data []byte) (int, error) {
+	read := 0
 	for {
 		switch r.state {
 		case StateInit:
-			rl, n, err := parseRequestLine(data)
+			rl, n, err := parseRequestLine(data[read:])
 			if err != nil {
 				return 0, err
 			}
 
 			if n > 0 {
 				r.RequestLine = *rl
+				r.state = StateHeaders
+			}
+
+			read += n
+
+			return read, nil
+
+		case StateHeaders:
+			n, done, err := r.Headers.Parse(data[read:])
+			if err != nil {
+				return 0, err
+			}
+
+			if done {
 				r.state = StateDone
 			}
-		
-			// TODO: this will probably change when doing headers
-			return n, nil
+
+			read += n
+
+			if n == 0 {
+				return read, nil
+			}
+
+			// NOTE: important
+			return read, nil
 
 		case StateDone:
 			return 0, nil
+
+		default:
+			panic("ayo what")
 		}
 	}
 }
@@ -56,6 +80,7 @@ func (r *Request) done() bool {
 func newRequest() *Request {
 	return &Request{
 		state: StateInit,
+		Headers: headers.NewHeaders(),
 	}
 }
 
@@ -94,16 +119,9 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 
 		if readErr != nil {
 			if readErr == io.EOF {
-				if parsedN == 0 && dataEnd > 0 {
-					// have unparsed data at EOF
-					return nil, fmt.Errorf("incomplete data at EOF")
-				}
 				if request.done() {
 					break
 				}
-
-				// if not done but hit EOF
-				return nil, io.ErrUnexpectedEOF
 			}
 			return nil, readErr
 		}

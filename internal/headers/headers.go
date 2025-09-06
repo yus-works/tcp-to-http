@@ -33,7 +33,7 @@ func parseHeader(fieldLine []byte) (string, string, error) {
 	if !isValidKey.Match(parts[0]) {
 		return "", "", fmt.Errorf("Invalid key format")
 	}
-	
+
 	key := string(bytes.ToLower(parts[0]))
 	val := string(bytes.TrimSpace(parts[1]))
 
@@ -45,7 +45,20 @@ func (h Headers) Get(k string) string {
 }
 
 func (h Headers) Set(k, v string) {
-	h[strings.ToLower(k)] = v
+	key := strings.ToLower(k)
+
+	if oldVal, ok := h[key]; !ok { // not found
+		h[key] = v
+
+	} else { // found
+		if v == oldVal {
+			return
+
+		} else {
+			newVal := strings.Join([]string{oldVal, v}, ", ")
+			h[key] = newVal
+		}
+	}
 }
 
 func (h Headers) Parse(data []byte) (int, bool, error) {
@@ -54,6 +67,7 @@ func (h Headers) Parse(data []byte) (int, bool, error) {
 
 	line := data
 
+	// TODO: is this loop really necessary?
 	for {
 		line = data[read:]
 
@@ -77,12 +91,7 @@ func (h Headers) Parse(data []byte) (int, bool, error) {
 
 		read += idx + len(CRLF)
 
-		if oldVal, ok := h[k]; !ok {
-			h[k] = v
-		} else {
-			newVal := strings.Join([]string{oldVal, v}, ", ")
-			h[k] = newVal
-		}
+		h.Set(k, v)
 	}
 
 	return read, done, nil
