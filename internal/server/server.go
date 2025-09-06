@@ -36,5 +36,11 @@ func Start() {
 		fmt.Printf("- Method: %s\n", rq.RequestLine.Method)
 		fmt.Printf("- Target: %s\n", rq.RequestLine.RequestTarget)
 		fmt.Printf("- Version: %s\n", rq.RequestLine.HttpVersion)
+
+		fmt.Printf("Headers:\n")
+		for k, v := range *rq.Headers {
+			fmt.Printf("- %s: %s\n", k, v)
+		}
+		
 	}
 }
