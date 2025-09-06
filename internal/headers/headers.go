@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"regexp"
+	"strings"
 )
 
 type Headers map[string]string
@@ -68,7 +69,12 @@ func (h Headers) Parse(data []byte) (int, bool, error) {
 
 		read += idx + len(CRLF)
 
-		h[k] = v
+		if oldVal, ok := h[k]; !ok {
+			h[k] = v
+		} else {
+			newVal := strings.Join([]string{oldVal, v}, ", ")
+			h[k] = newVal
+		}
 	}
 
 	return read, done, nil
