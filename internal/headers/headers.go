@@ -3,12 +3,14 @@ package headers
 import (
 	"bytes"
 	"fmt"
+	"regexp"
 )
 
 type Headers map[string]string
 
 var CRLF = []byte("\r\n")
 var SP = byte(' ')
+var isValidKey = regexp.MustCompile("^[a-zA-Z0-9!#$%&'*+-.^_`|~]+$")
 
 func parseHeader(fieldLine []byte) (string, string, error) {
 	colonIdx := bytes.Index(fieldLine, []byte(":"))
@@ -26,6 +28,11 @@ func parseHeader(fieldLine []byte) (string, string, error) {
 	kv := bytes.TrimSpace(fieldLine)
 
 	parts := bytes.SplitN(kv, []byte(":"), 2)
+
+	if !isValidKey.Match(parts[0]) {
+		return "", "", fmt.Errorf("Invalid key format")
+	}
+	
 	key := string(parts[0])
 	val := string(bytes.TrimSpace(parts[1]))
 
