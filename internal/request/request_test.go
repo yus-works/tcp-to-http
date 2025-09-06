@@ -328,9 +328,9 @@ func TestRequestParseHeaders(t *testing.T) {
 	r, err := RequestFromReader(reader)
 	require.NoError(t, err)
 	require.NotNil(t, r)
-	assert.Equal(t, "localhost:42069", r.Headers["host"])
-	assert.Equal(t, "curl/7.81.0", r.Headers["user-agent"])
-	assert.Equal(t, "*/*", r.Headers["accept"])
+	assert.Equal(t, "localhost:42069", r.Headers.Get("host"))
+	assert.Equal(t, "curl/7.81.0", r.Headers.Get("user-agent"))
+	assert.Equal(t, "*/*", r.Headers.Get("accept"))
 
 	// Test: Empty Headers
 	reader = &chunkReader{
@@ -340,7 +340,7 @@ func TestRequestParseHeaders(t *testing.T) {
 	r, err = RequestFromReader(reader)
 	require.NoError(t, err)
 	require.NotNil(t, r)
-	assert.Equal(t, 0, len(r.Headers))
+	assert.Equal(t, 0, len(*r.Headers))
 
 	// Test: Malformed Header
 	reader = &chunkReader{
@@ -358,7 +358,7 @@ func TestRequestParseHeaders(t *testing.T) {
 	r, err = RequestFromReader(reader)
 	require.NoError(t, err)
 	require.NotNil(t, r)
-	assert.Equal(t, "session=abc, user=123, theme=dark", r.Headers["set-cookie"])
+	assert.Equal(t, "session=abc, user=123, theme=dark", r.Headers.Get("set-cookie"))
 
 	// Test: Case Insensitive Headers
 	reader = &chunkReader{
@@ -368,9 +368,9 @@ func TestRequestParseHeaders(t *testing.T) {
 	r, err = RequestFromReader(reader)
 	require.NoError(t, err)
 	require.NotNil(t, r)
-	assert.Equal(t, "example.com", r.Headers["host"])
-	assert.Equal(t, "text/html", r.Headers["content-type"])
-	assert.Equal(t, "42", r.Headers["content-length"])
+	assert.Equal(t, "example.com", r.Headers.Get("host"))
+	assert.Equal(t, "text/html", r.Headers.Get("content-type"))
+	assert.Equal(t, "42", r.Headers.Get("content-length"))
 
 	// Test: Missing End of Headers
 	reader = &chunkReader{
@@ -388,8 +388,8 @@ func TestRequestParseHeaders(t *testing.T) {
 	r, err = RequestFromReader(reader)
 	require.NoError(t, err)
 	require.NotNil(t, r)
-	assert.Equal(t, "spaced.com", r.Headers["host"])
-	assert.Equal(t, "text/html", r.Headers["accept"])
+	assert.Equal(t, "spaced.com", r.Headers.Get("host"))
+	assert.Equal(t, "text/html", r.Headers.Get("accept"))
 
 	// Test: Single character chunks with headers
 	reader = &chunkReader{
@@ -399,7 +399,7 @@ func TestRequestParseHeaders(t *testing.T) {
 	r, err = RequestFromReader(reader)
 	require.NoError(t, err)
 	require.NotNil(t, r)
-	assert.Equal(t, "value", r.Headers["x-custom"])
+	assert.Equal(t, "value", r.Headers.Get("x-custom"))
 
 	// Test: Large header value
 	largeValue := strings.Repeat("a", 1000)
@@ -410,7 +410,7 @@ func TestRequestParseHeaders(t *testing.T) {
 	r, err = RequestFromReader(reader)
 	require.NoError(t, err)
 	require.NotNil(t, r)
-	assert.Equal(t, largeValue, r.Headers["x-large"])
+	assert.Equal(t, largeValue, r.Headers.Get("x-large"))
 
 	// Test: Invalid header characters
 	reader = &chunkReader{
