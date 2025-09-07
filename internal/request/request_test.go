@@ -277,7 +277,7 @@ func TestRequestLineParse(t *testing.T) {
 	// assert.Equal(t, "/very/long/path/with/many/segments/and/query?param1=value1&param2=value2&param3=value3", r.RequestLine.RequestTarget)
 	// assert.Equal(t, "1.1", r.RequestLine.HttpVersion)
 
-	// Test: legacy version 
+	// Test: legacy version
 	// r, err = RequestFromReader(
 	// 	&chunkReader{
 	// 		data:"GET /legacy HTTP/1.0\r\n" +
@@ -419,4 +419,113 @@ func TestRequestParseHeaders(t *testing.T) {
 	}
 	r, err = RequestFromReader(reader)
 	require.Error(t, err)
+}
+
+func TestBodyParse(t *testing.T) {
+	// Test: Standard Body
+	reader := &chunkReader{
+		data: "POST /submit HTTP/1.1\r\n" +
+			"Host: localhost:42069\r\n" +
+			"Content-Length: 13\r\n" +
+			"\r\n" +
+			"hello world!\n",
+		numBytesPerRead: 3,
+	}
+	r, err := RequestFromReader(reader)
+	require.NoError(t, err)
+	require.NotNil(t, r)
+	assert.Equal(t, "hello world!\n", string(r.Body))
+
+	// Test: Empty Body, 0 reported content length
+	reader = &chunkReader{
+		data: "POST /submit HTTP/1.1\r\n" +
+			"Host: localhost:42069\r\n" +
+			"Content-Length: 0\r\n" +
+			"\r\n",
+		numBytesPerRead: 3,
+	}
+	r, err = RequestFromReader(reader)
+	require.NoError(t, err)
+	require.NotNil(t, r)
+	assert.Equal(t, "", string(r.Body))
+
+	// Test: Empty Body, no reported content length
+	reader = &chunkReader{
+		data: "GET / HTTP/1.1\r\n" +
+			"Host: localhost:42069\r\n" +
+			"\r\n",
+		numBytesPerRead: 3,
+	}
+	r, err = RequestFromReader(reader)
+	require.NoError(t, err)
+	require.NotNil(t, r)
+	assert.Equal(t, "", string(r.Body))
+
+	// Test: Body shorter than reported content length
+	reader = &chunkReader{
+		data: "POST /submit HTTP/1.1\r\n" +
+			"Host: localhost:42069\r\n" +
+			"Content-Length: 20\r\n" +
+			"\r\n" +
+			"partial content",
+		numBytesPerRead: 3,
+	}
+	r, err = RequestFromReader(reader)
+	require.Error(t, err)
+
+	// Test: No Content-Length but Body Exists
+	reader = &chunkReader{
+		data: "POST /submit HTTP/1.1\r\n" +
+			"Host: localhost:42069\r\n" +
+			"\r\n" +
+			"body without length",
+		numBytesPerRead: 3,
+	}
+	r, err = RequestFromReader(reader)
+	require.NoError(t, err)
+	require.NotNil(t, r)
+	assert.Equal(t, "", string(r.Body)) // Body should be empty since no Content-Length
+
+	// Test: Large body with exact content length
+	largeBody := "This is a larger body content that spans multiple chunks!"
+	reader = &chunkReader{
+		data: "POST /data HTTP/1.1\r\n" +
+			"Host: localhost:42069\r\n" +
+			fmt.Sprintf("Content-Length: %d\r\n", len(largeBody)) +
+			"\r\n" +
+			largeBody,
+		numBytesPerRead: 5,
+	}
+	r, err = RequestFromReader(reader)
+	require.NoError(t, err)
+	require.NotNil(t, r)
+	assert.Equal(t, largeBody, string(r.Body))
+
+	// Test: Body with single byte chunks
+	reader = &chunkReader{
+		data: "POST /api HTTP/1.1\r\n" +
+			"Host: localhost:42069\r\n" +
+			"Content-Length: 5\r\n" +
+			"\r\n" +
+			"12345",
+		numBytesPerRead: 1,
+	}
+	r, err = RequestFromReader(reader)
+	require.NoError(t, err)
+	require.NotNil(t, r)
+	assert.Equal(t, "12345", string(r.Body))
+
+	// Test: Binary body content
+	reader = &chunkReader{
+		data: "POST /upload HTTP/1.1\r\n" +
+			"Host: localhost:42069\r\n" +
+			"Content-Length: 4\r\n" +
+			"\r\n" +
+			"\x00\x01\x02\x03",
+		numBytesPerRead: 3,
+	}
+	r, err = RequestFromReader(reader)
+	require.NoError(t, err)
+	require.NotNil(t, r)
+	assert.Equal(t, []byte{0x00, 0x01, 0x02, 0x03}, r.Body)
 }
