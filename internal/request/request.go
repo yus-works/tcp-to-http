@@ -127,18 +127,18 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 			dataEnd -= parsedN
 		}
 
-		if readErr != nil {
-			if readErr == io.EOF {
-
-				// if got EOF but in body parsing stage, try parsing body
-				if request.state == StateBody {
-					continue
-				}
-
-				if request.done() {
-					break
-				}
+		if readErr == io.EOF {
+			// if got EOF but in body parsing stage, try parsing body
+			if request.state == StateBody {
+				continue
 			}
+
+			if request.done() {
+				break
+			}
+		}
+
+		if readErr != nil {
 			return nil, readErr
 		}
 
