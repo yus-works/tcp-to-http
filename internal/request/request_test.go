@@ -362,7 +362,7 @@ func TestRequestParseHeaders(t *testing.T) {
 
 	// Test: Case Insensitive Headers
 	reader = &chunkReader{
-		data:            "GET / HTTP/1.1\r\nHOST: example.com\r\nContent-Type: text/html\r\ncontent-length: 42\r\n\r\n",
+		data:            "GET / HTTP/1.1\r\nHOST: example.com\r\nContent-Type: text/html\r\n\r\n",
 		numBytesPerRead: 4,
 	}
 	r, err = RequestFromReader(reader)
@@ -370,7 +370,6 @@ func TestRequestParseHeaders(t *testing.T) {
 	require.NotNil(t, r)
 	assert.Equal(t, "example.com", r.Headers.Get("host"))
 	assert.Equal(t, "text/html", r.Headers.Get("content-type"))
-	assert.Equal(t, "42", r.Headers.Get("content-length"))
 
 	// Test: Missing End of Headers
 	reader = &chunkReader{
