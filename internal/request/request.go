@@ -30,6 +30,7 @@ const (
 
 func (r *Request) parse(data []byte) (int, error) {
 	read := 0
+	// TODO: is this loop doing anything
 	for {
 		switch r.state {
 		case StateInit:
