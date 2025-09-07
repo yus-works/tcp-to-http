@@ -10,6 +10,7 @@ type Request struct {
 	RequestLine RequestLine
 	state       parserState
 	Headers     *headers.Headers
+	Body        []byte
 }
 
 type RequestLine struct {
@@ -24,6 +25,7 @@ const (
 	StateInit    parserState = "init"
 	StateDone    parserState = "done"
 	StateHeaders parserState = "headers"
+	StateBody    parserState = "body"
 )
 
 func (r *Request) parse(data []byte) (int, error) {
@@ -52,7 +54,7 @@ func (r *Request) parse(data []byte) (int, error) {
 			}
 
 			if done {
-				r.state = StateDone
+				r.state = StateBody
 			}
 
 			read += n
@@ -62,6 +64,14 @@ func (r *Request) parse(data []byte) (int, error) {
 			}
 
 			// NOTE: important
+			return read, nil
+
+		case StateBody:
+			if cl := r.Headers.Get("content-length"); cl == "" {
+				r.state = StateDone
+				return read, nil
+			}
+
 			return read, nil
 
 		case StateDone:
@@ -79,7 +89,7 @@ func (r *Request) done() bool {
 
 func newRequest() *Request {
 	return &Request{
-		state: StateInit,
+		state:   StateInit,
 		Headers: headers.NewHeaders(),
 	}
 }
@@ -119,6 +129,12 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 
 		if readErr != nil {
 			if readErr == io.EOF {
+
+				// if got EOF but in body parsing stage, try parsing body
+				if request.state == StateBody {
+					continue
+				}
+
 				if request.done() {
 					break
 				}
