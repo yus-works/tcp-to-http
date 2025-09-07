@@ -2,6 +2,7 @@ package request
 
 import (
 	"io"
+	"strconv"
 
 	"github.com/yus-works/tcp-to-http/internal/headers"
 )
@@ -29,6 +30,8 @@ const (
 )
 
 func (r *Request) parse(data []byte) (int, error) {
+	// TODO: this should be called consumedN because it only says
+	// how many bytes were parsed when a successful flush happened
 	read := 0
 	// TODO: is this loop doing anything
 	for {
@@ -56,6 +59,10 @@ func (r *Request) parse(data []byte) (int, error) {
 
 			if done {
 				r.state = StateBody
+
+				// done means CRLF at start of buf
+				// so += 2 to skip those two bytes
+				read += 2
 			}
 
 			read += n
@@ -68,9 +75,23 @@ func (r *Request) parse(data []byte) (int, error) {
 			return read, nil
 
 		case StateBody:
-			if cl := r.Headers.Get("content-length"); cl == "" {
+			clen := r.Headers.Get("content-length")
+			if clen == "" {
 				r.state = StateDone
 				return read, nil
+			}
+
+			r.Body = append(r.Body, data[read:]...)
+			read += len(data) - read
+
+			ln, err := strconv.Atoi(clen)
+			if err != nil {
+				return 0, nil
+			}
+
+			// TODO: probably terrible for perf
+			if len(r.Body) == ln {
+				r.state = StateDone
 			}
 
 			return read, nil
@@ -104,7 +125,6 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 	// this indexes the last byte in the buf that stores data
 	dataEnd := 0
 	for !request.done() {
-
 		// this just keeps reading into the buffer
 		readN, readErr := reader.Read(buf[dataEnd:])
 
@@ -128,9 +148,20 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 			dataEnd -= parsedN
 		}
 
+		// TODO: horrible
 		if readErr == io.EOF {
-			// if got EOF but in body parsing stage, try parsing body
+			// if EOF but in body parsing stage, try parsing body
 			if request.state == StateBody {
+				// if EOF and nothing left to read, error
+				if readN == 0 {
+					// this has to be here I think
+					// (so maybe take it out of .parse?)
+					if cl := request.Headers.Get("content-length"); cl == "" {
+						break
+					}
+					return nil, readErr
+				}
+
 				continue
 			}
 
