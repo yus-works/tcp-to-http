@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -76,8 +77,8 @@ func (h Headers) Parse(data []byte) (int, bool, error) {
 			break
 		}
 
-		// if data is just crlf, all headers have been parsed
-		if len(line) == len(CRLF) {
+		// if data starts with crlf, all headers have been parsed
+		if slices.Equal(line[:2], CRLF) {
 			done = true
 			break
 		}
