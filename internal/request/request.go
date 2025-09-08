@@ -30,14 +30,12 @@ const (
 )
 
 func (r *Request) parse(data []byte) (int, error) {
-	// TODO: this should be called consumedN because it only says
-	// how many bytes were parsed when a successful flush happened
-	read := 0
+	consumed := 0
 	// TODO: is this loop doing anything
 	for {
 		switch r.state {
 		case StateInit:
-			rl, n, err := parseRequestLine(data[read:])
+			rl, n, err := parseRequestLine(data[consumed:])
 			if err != nil {
 				return 0, err
 			}
@@ -47,12 +45,12 @@ func (r *Request) parse(data []byte) (int, error) {
 				r.state = StateHeaders
 			}
 
-			read += n
+			consumed += n
 
-			return read, nil
+			return consumed, nil
 
 		case StateHeaders:
-			n, done, err := r.Headers.Parse(data[read:])
+			n, done, err := r.Headers.Parse(data[consumed:])
 			if err != nil {
 				return 0, err
 			}
@@ -62,27 +60,27 @@ func (r *Request) parse(data []byte) (int, error) {
 
 				// done means CRLF at start of buf
 				// so += 2 to skip those two bytes
-				read += 2
+				consumed += 2
 			}
 
-			read += n
+			consumed += n
 
 			if n == 0 {
-				return read, nil
+				return consumed, nil
 			}
 
 			// NOTE: important
-			return read, nil
+			return consumed, nil
 
 		case StateBody:
 			clen := r.Headers.Get("content-length")
 			if clen == "" {
 				r.state = StateDone
-				return read, nil
+				return consumed, nil
 			}
 
-			r.Body = append(r.Body, data[read:]...)
-			read += len(data) - read
+			r.Body = append(r.Body, data[consumed:]...)
+			consumed += len(data) - consumed
 
 			ln, err := strconv.Atoi(clen)
 			if err != nil {
@@ -94,7 +92,7 @@ func (r *Request) parse(data []byte) (int, error) {
 				r.state = StateDone
 			}
 
-			return read, nil
+			return consumed, nil
 
 		case StateDone:
 			return 0, nil
