@@ -60,3 +60,20 @@ func WriteHeaders(w io.Writer, headers headers.Headers) error  {
 	}
 	return nil
 }
+
+type HandlerError struct {
+	StatusCode StatusCode
+	Message    string
+}
+
+func NewHandlerErr(statusCode StatusCode) HandlerError {
+	return HandlerError{
+		StatusCode: statusCode,
+		Message: statusCode.String(),
+	}
+}
+
+func WriteError(w io.Writer, statusCode StatusCode) {
+	WriteStatusLine(w, statusCode)
+	WriteHeaders(w, GetDefaultHeaders(0))
+}

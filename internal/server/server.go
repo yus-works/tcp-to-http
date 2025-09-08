@@ -61,8 +61,8 @@ func (s *Server) handle(conn net.Conn) {
 	if err != nil {
 		log.Println("Failed to parse/read request: ", err)
 
-        conn.Write([]byte("HTTP/1.1 400 Bad Request\r\n\r\n"))
-        return
+		response.WriteError(conn, response.StatusBadRequest)
+		return
 	}
 
 	response.WriteStatusLine(conn, response.StatusOK)
