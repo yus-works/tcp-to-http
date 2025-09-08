@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"log"
+
+	"github.com/yus-works/tcp-to-http/internal/headers"
 )
 
 type StatusCode int
@@ -34,4 +36,22 @@ func WriteStatusLine(w io.Writer, statusCode StatusCode) {
 	if err != nil {
 		log.Println("Failed to write status line:", err)
 	}
+}
+
+func GetDefaultHeaders(contentLen int) headers.Headers {
+	headers := headers.NewHeaders()
+
+	headers.Set("Content-Length", fmt.Sprint(contentLen))
+	headers.Set("Connection", "close")
+	headers.Set("Content-Type", "text/plain")
+
+	return *headers
+}
+
+func WriteHeaders(w io.Writer, headers headers.Headers) error  {
+	_, err := fmt.Fprint(w, headers)
+	if err != nil {
+		return fmt.Errorf("Failed to write headers: %w", err)
+	}
+	return nil
 }
