@@ -66,10 +66,6 @@ type HandlerError struct {
 	Message    string
 }
 
-func (e HandlerError) Error() string {
-    return e.Message
-}
-
 func NewHandlerErr(statusCode StatusCode) HandlerError {
 	return HandlerError{
 		StatusCode: statusCode,
