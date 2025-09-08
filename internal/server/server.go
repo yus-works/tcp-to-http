@@ -22,8 +22,7 @@ type Server struct {
 func Serve(port int, handler response.Handler) (*Server, error) {
 	ln, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
 	if err != nil {
-		log.Printf("Error starting listener on %d: %s\n", port, err)
-		return nil, err
+		return nil, fmt.Errorf("Error starting server on %d: %w\n", port, err)
 	}
 
 	s := Server{
