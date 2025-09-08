@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 
 	"github.com/yus-works/tcp-to-http/internal/request"
+	"github.com/yus-works/tcp-to-http/internal/response"
 )
 
 type Server struct {
@@ -63,13 +64,7 @@ func (s *Server) handle(conn net.Conn) {
         conn.Write([]byte("HTTP/1.1 400 Bad Request\r\n\r\n"))
         return
 	}
-	
-    // Fix: Proper HTTP response format
-    response := "HTTP/1.1 200 OK\r\n" +
-                "Content-Type: text/plain\r\n" +
-                "Content-Length: 13\r\n" +
-                "\r\n" +
-                "Hello Gamers!"
 
-	conn.Write([]byte(response))
+	response.WriteStatusLine(conn, response.StatusOK)
+	response.WriteHeaders(conn, response.GetDefaultHeaders(0))
 }
