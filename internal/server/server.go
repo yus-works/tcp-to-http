@@ -30,6 +30,7 @@ func Start() {
 		rq, err := request.RequestFromReader(conn)
 		if err != nil {
 			log.Println("Failed to read from conn: ", err)
+			os.Exit(1)
 		}
 
 		fmt.Printf("Request line:\n")
@@ -42,5 +43,7 @@ func Start() {
 			fmt.Printf("- %s: %s\n", k, v)
 		}
 		
+		fmt.Printf("Body:\n")
+		fmt.Print(string(rq.Body))
 	}
 }
