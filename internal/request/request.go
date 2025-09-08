@@ -43,16 +43,17 @@ func (r *Request) parse(data []byte) (int, error) {
 			if n > 0 {
 				r.RequestLine = *rl
 				r.state = StateHeaders
+
+				consumed += n
+				continue // continue to process if theres more data
 			}
 
-			consumed += n
-
-			return consumed, nil
+			return consumed, nil // return if no parse
 
 		case StateHeaders:
 			n, done, err := r.Headers.Parse(data[consumed:])
 			if err != nil {
-				return 0, err
+				return consumed, err
 			}
 
 			if done {
@@ -61,6 +62,9 @@ func (r *Request) parse(data []byte) (int, error) {
 				// done means CRLF at start of buf
 				// so += 2 to skip those two bytes
 				consumed += 2
+				consumed += n
+
+				continue
 			}
 
 			consumed += n
@@ -69,9 +73,6 @@ func (r *Request) parse(data []byte) (int, error) {
 				return consumed, nil
 			}
 
-			// NOTE: important
-			return consumed, nil
-
 		case StateBody:
 			clen := r.Headers.Get("content-length")
 			if clen == "" {
@@ -79,23 +80,25 @@ func (r *Request) parse(data []byte) (int, error) {
 				return consumed, nil
 			}
 
-			r.Body = append(r.Body, data[consumed:]...)
-			consumed += len(data) - consumed
-
 			ln, err := strconv.Atoi(clen)
 			if err != nil {
-				return 0, nil
+				return consumed, err
 			}
 
-			// TODO: probably terrible for perf
+			remaining := ln - len(r.Body)
+			available := len(data) - consumed
+			toRead := min(remaining, available)
+			
+			r.Body = append(r.Body, data[consumed:consumed+toRead]...)
+			consumed += toRead
+
 			if len(r.Body) == ln {
 				r.state = StateDone
 			}
-
 			return consumed, nil
 
 		case StateDone:
-			return 0, nil
+			return consumed, nil
 
 		default:
 			panic("ayo what")
