@@ -1,6 +1,7 @@
 package request
 
 import (
+	"fmt"
 	"io"
 	"strconv"
 
@@ -88,7 +89,7 @@ func (r *Request) parse(data []byte) (int, error) {
 			remaining := ln - len(r.Body)
 			available := len(data) - consumed
 			toRead := min(remaining, available)
-			
+
 			r.Body = append(r.Body, data[consumed:consumed+toRead]...)
 			consumed += toRead
 
@@ -129,46 +130,53 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		// this just keeps reading into the buffer
 		readN, readErr := reader.Read(buf[dataEnd:])
 
-		dataEnd += readN
+		if readN > 0 {
+			dataEnd += readN
 
-		parsedN, parseErr := request.parse(buf[:dataEnd])
-		if parseErr != nil {
-			return nil, parseErr
+			parsedN, parseErr := request.parse(buf[:dataEnd])
+			if parseErr != nil {
+				return nil, parseErr
+			}
+
+			// when it returns non zero, it means it parsed a valid line
+			// so we can just clear out the data that it parsed because we dont
+			// need it anymore
+			if parsedN > 0 {
+				// since the parsed line might end before the end of
+				// the latest read chunk, we copy anything that is left
+				// after the length the parser says it consumed and copy it
+				// to the start because that might be the start of another line
+
+				copy(buf, buf[parsedN:dataEnd])
+				dataEnd -= parsedN
+			}
 		}
 
-		// when it returns non zero, it means it parsed a valid line
-		// so we can just clear out the data that it parsed because we dont
-		// need it anymore
-		if parsedN > 0 {
-			// since the parsed line might end before the end of
-			// the latest read chunk, we copy anything that is left
-			// after the length the parser says it consumed and copy it
-			// to the start because that might be the start of another line
-
-			copy(buf, buf[parsedN:dataEnd])
-			dataEnd -= parsedN
-		}
-
-		// TODO: horrible
 		if readErr == io.EOF {
-			// if EOF but in body parsing stage, try parsing body
-			if request.state == StateBody {
-				// if EOF and nothing left to read, error
-				if readN == 0 {
-					// this has to be here I think
-					// (so maybe take it out of .parse?)
-					if cl := request.Headers.Get("content-length"); cl == "" {
-						break
-					}
-					return nil, readErr
+			// try to parse any remaining data
+			if dataEnd > 0 {
+				_, parseErr := request.parse(buf[:dataEnd])
+				if parseErr != nil {
+					return nil, parseErr
 				}
+			}
 
-				continue
+			// check if body is done
+			if request.state == StateBody {
+				if cl := request.Headers.Get("content-length"); cl != "" {
+					ln, _ := strconv.Atoi(cl)
+					if len(request.Body) < ln {
+						return nil, fmt.Errorf("incomplete body: expected %d bytes, got %d", ln, len(request.Body))
+					}
+				}
+				request.state = StateDone
 			}
 
 			if request.done() {
 				break
 			}
+
+			return nil, fmt.Errorf("unexpected EOF in state %s", request.state)
 		}
 
 		if readErr != nil {
