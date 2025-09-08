@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"net"
@@ -15,9 +16,10 @@ type Server struct {
 
 	closed   atomic.Bool
 	listener net.Listener
+	handler response.Handler
 }
 
-func Serve(port int) (*Server, error) {
+func Serve(port int, handler response.Handler) (*Server, error) {
 	ln, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
 	if err != nil {
 		log.Printf("Error starting listener on %d: %s\n", port, err)
@@ -27,6 +29,7 @@ func Serve(port int) (*Server, error) {
 	s := Server{
 		port:     port,
 		listener: ln,
+		handler: handler,
 	}
 
 	go s.listen()
@@ -57,7 +60,7 @@ func (s *Server) listen() {
 func (s *Server) handle(conn net.Conn) {
 	defer conn.Close()
 
-	_, err := request.RequestFromReader(conn)
+	req, err := request.RequestFromReader(conn)
 	if err != nil {
 		log.Println("Failed to parse/read request: ", err)
 
@@ -65,6 +68,14 @@ func (s *Server) handle(conn net.Conn) {
 		return
 	}
 
+	buf := bytes.Buffer{}
+
+	handlerErr := s.handler(&buf, req)
+	if handlerErr != nil {
+		response.WriteError(conn, handlerErr.StatusCode)
+	}
+
 	response.WriteStatusLine(conn, response.StatusOK)
 	response.WriteHeaders(conn, response.GetDefaultHeaders(0))
+	fmt.Fprint(conn, buf)
 }

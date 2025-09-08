@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/yus-works/tcp-to-http/internal/headers"
+	"github.com/yus-works/tcp-to-http/internal/request"
 )
 
 type StatusCode int
@@ -61,11 +62,14 @@ func WriteHeaders(w io.Writer, headers headers.Headers) error  {
 	return nil
 }
 
+type Handler func(w io.Writer, req *request.Request) *HandlerError
+
 type HandlerError struct {
 	StatusCode StatusCode
 	Message    string
 }
 
+// TODO: use in more places
 func NewHandlerErr(statusCode StatusCode) HandlerError {
 	return HandlerError{
 		StatusCode: statusCode,
