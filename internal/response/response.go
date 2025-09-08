@@ -54,7 +54,7 @@ func WriteHeaders(w io.Writer, headers headers.Headers) error  {
 		msg += fmt.Sprintf("%s: %s\r\n", k, v)
 	}
 
-	_, err := fmt.Fprintf(w, "%s\r\n", msg)
+	_, err := fmt.Fprintf(w, "%s\r\n", msg) // finish headers
 	if err != nil {
 		return fmt.Errorf("Failed to write headers: %w", err)
 	}
