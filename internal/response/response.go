@@ -3,7 +3,6 @@ package response
 import (
 	"fmt"
 	"io"
-	"log"
 
 	"github.com/yus-works/tcp-to-http/internal/headers"
 )
@@ -28,14 +27,15 @@ func (s StatusCode) String() string {
     return ""
 }
 
-func WriteStatusLine(w io.Writer, statusCode StatusCode) {
+func WriteStatusLine(w io.Writer, statusCode StatusCode) error {
 	_, err := fmt.Fprintf(w,
 		"HTTP/1.1 %d %s\r\n",
 		statusCode, statusCode.String(),
 	)
 	if err != nil {
-		log.Println("Failed to write status line:", err)
+		return fmt.Errorf("Failed to write status line: %w", err)
 	}
+	return nil
 }
 
 func GetDefaultHeaders(contentLen int) headers.Headers {
