@@ -74,7 +74,9 @@ func (s *Server) handle(conn net.Conn) {
 		response.WriteError(conn, handlerErr.StatusCode)
 	}
 
+	msg := buf.Bytes()
+
 	response.WriteStatusLine(conn, response.StatusOK)
-	response.WriteHeaders(conn, response.GetDefaultHeaders(0))
-	fmt.Fprint(conn, buf)
+	response.WriteHeaders(conn, response.GetDefaultHeaders(len(msg)))
+	conn.Write(msg)
 }
