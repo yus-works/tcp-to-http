@@ -69,12 +69,16 @@ type HandlerError struct {
 	Message    string
 }
 
-// TODO: use in more places
 func NewHandlerErr(statusCode StatusCode) HandlerError {
 	return HandlerError{
 		StatusCode: statusCode,
 		Message: statusCode.String(),
 	}
+}
+
+func (e *HandlerError) Write(w io.Writer) {
+	WriteStatusLine(w, e.StatusCode)
+	WriteHeaders(w, GetDefaultHeaders(0))
 }
 
 func WriteError(w io.Writer, statusCode StatusCode) {

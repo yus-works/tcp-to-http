@@ -71,7 +71,7 @@ func (s *Server) handle(conn net.Conn) {
 
 	handlerErr := s.handler(&buf, req)
 	if handlerErr != nil {
-		response.WriteError(conn, handlerErr.StatusCode)
+		handlerErr.Write(conn)
 	}
 
 	msg := buf.Bytes()
